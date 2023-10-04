@@ -26,10 +26,8 @@ in a format that Prometheus can load as follows:
 ## TODO
 
  - Add tests and support more metrics
- - Support graceful shutdown
 
 ## Bug Reports
 
 If you hit some bugs and have requests, please leave some comments on [Issues](https://github.com/maropu/pg_stats_exporter/issues)
 or Twitter ([@maropu](http://twitter.com/#!/maropu)).
-

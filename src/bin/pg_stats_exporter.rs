@@ -8,6 +8,7 @@ use pg_stats_exporter::{db::PostgresNode, tcp_listener, routes};
 use routes::State;
 use routerify;
 use std::sync::Arc;
+use tokio;
 
 const DEFAULT_PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
 
@@ -47,12 +48,22 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|err| anyhow!(err))?;
     let service = routerify::RouterService::new(router).unwrap();
     let server = hyper::Server::from_tcp(http_listener)?
-        .serve(service);
-        // TODO: Needs to implement graceful shutdown
-        // .with_graceful_shutdown(task_mgr::shutdown_watcher());
+        .serve(service)
+        .with_graceful_shutdown(shutdown_watcher());
 
-    server.await?;
+    // Run the server until shutdown requested
+    if let Err(e) = server.await {
+        eprintln!("Server error: {}", e);
+    }
+
     Ok(())
+}
+
+async fn shutdown_watcher() {
+    // Wait for the CTRL+C signal
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to install CTRL+C signal handler");
 }
 
 fn cli() -> Command {
