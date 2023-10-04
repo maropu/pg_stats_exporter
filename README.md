@@ -26,6 +26,7 @@ in a format that Prometheus can load as follows:
 ## TODO
 
  - Add tests and support more metrics
+ - Add scripts to use GitHub Actions for build and tests
 
 ## Bug Reports
 
