@@ -12,7 +12,7 @@ use tokio;
 
 const DEFAULT_PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
     let arg_matches = cli().get_matches();
 
