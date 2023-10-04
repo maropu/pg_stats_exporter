@@ -1,5 +1,4 @@
-use hyper::{header::CONTENT_TYPE, Body, Request, Response};
-use http;
+use hyper::{header::CONTENT_TYPE, Body, Method, Request, Response, StatusCode};
 use prometheus::{Encoder, TextEncoder};
 use routerify::{Router, RouterBuilder, RouteError};
 use routerify::ext::RequestExt;
@@ -38,32 +37,32 @@ pub enum ApiError {
 }
 
 impl ApiError {
-    pub fn into_response(self) -> http::Response<Body> {
+    pub fn into_response(self) -> Response<Body> {
         match self {
             ApiError::BadRequest(err) => HttpErrorBody::response_from_msg_and_status(
                 format!("{err:#?}"), // use debug printing so that we give the cause
-                http::StatusCode::BAD_REQUEST,
+                StatusCode::BAD_REQUEST,
             ),
             ApiError::Forbidden(_) => {
-                HttpErrorBody::response_from_msg_and_status(self.to_string(), http::StatusCode::FORBIDDEN)
+                HttpErrorBody::response_from_msg_and_status(self.to_string(), StatusCode::FORBIDDEN)
             }
             ApiError::Unauthorized(_) => HttpErrorBody::response_from_msg_and_status(
                 self.to_string(),
-                http::StatusCode::UNAUTHORIZED,
+                StatusCode::UNAUTHORIZED,
             ),
             ApiError::NotFound(_) => {
-                HttpErrorBody::response_from_msg_and_status(self.to_string(), http::StatusCode::NOT_FOUND)
+                HttpErrorBody::response_from_msg_and_status(self.to_string(), StatusCode::NOT_FOUND)
             }
             ApiError::Conflict(_) => {
-                HttpErrorBody::response_from_msg_and_status(self.to_string(), http::StatusCode::CONFLICT)
+                HttpErrorBody::response_from_msg_and_status(self.to_string(), StatusCode::CONFLICT)
             }
             ApiError::PreconditionFailed(_) => HttpErrorBody::response_from_msg_and_status(
                 self.to_string(),
-                http::StatusCode::PRECONDITION_FAILED,
+                StatusCode::PRECONDITION_FAILED,
             ),
             ApiError::InternalServerError(err) => HttpErrorBody::response_from_msg_and_status(
                 err.to_string(),
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                StatusCode::INTERNAL_SERVER_ERROR,
             ),
         }
     }
@@ -75,12 +74,12 @@ struct HttpErrorBody {
 }
 
 impl HttpErrorBody {
-    pub fn response_from_msg_and_status(msg: String, status: http::StatusCode) -> http::Response<Body> {
+    pub fn response_from_msg_and_status(msg: String, status: StatusCode) -> Response<Body> {
         HttpErrorBody { msg }.to_response(status)
     }
 
-    pub fn to_response(&self, status: http::StatusCode) -> http::Response<Body> {
-        http::Response::builder()
+    pub fn to_response(&self, status: StatusCode) -> Response<Body> {
+        Response::builder()
             .status(status)
             .header(CONTENT_TYPE, "application/json")
             // we do not have nested maps with non string keys so serialization shouldn't fail
@@ -142,17 +141,17 @@ impl RequestCancelled {
 /// tries to achive with its `.instrument` used in the current approach.
 ///
 /// If needed, a declarative macro to substitute the |r| ... closure boilerplate could be introduced.
-async fn request_span<R, H>(request: http::Request<Body>, handler: H) -> R::Output
+async fn request_span<R, H>(request: Request<Body>, handler: H) -> R::Output
 where
-    R: Future<Output = Result<http::Response<Body>, ApiError>> + Send + 'static,
-    H: FnOnce(http::Request<Body>) -> R + Send + Sync + 'static,
+    R: Future<Output = Result<Response<Body>, ApiError>> + Send + 'static,
+    H: FnOnce(Request<Body>) -> R + Send + Sync + 'static,
 {
     let request_id = request.context::<RequestId>().unwrap_or_default().0;
     let method = request.method();
     let path = request.uri().path();
     let request_span = info_span!("request", %method, %path, %request_id);
 
-    let log_quietly = method == http::Method::GET;
+    let log_quietly = method == Method::GET;
     async move {
         let cancellation_guard = RequestCancelled::warn_when_dropped_without_responding();
         if log_quietly {
@@ -215,7 +214,7 @@ fn get_state(request: &Request<Body>) -> &State {
         .as_ref()
 }
 
-async fn prometheus_metrics_handler(_req: http::Request<Body>) -> Result<http::Response<Body>, ApiError> {
+async fn prometheus_metrics_handler(_req: Request<Body>) -> Result<Response<Body>, ApiError> {
     use bytes::{Bytes, BytesMut};
     use std::io::Write as _;
     use tokio::sync::mpsc;
@@ -353,7 +352,7 @@ async fn prometheus_metrics_handler(_req: http::Request<Body>) -> Result<http::R
     Ok(response)
 }
 
-async fn route_error_handler(err: RouteError) -> http::Response<Body> {
+async fn route_error_handler(err: RouteError) -> Response<Body> {
     match err.downcast::<ApiError>() {
         Ok(api_error) => api_error_handler(*api_error),
         Err(other_error) => {
@@ -362,13 +361,13 @@ async fn route_error_handler(err: RouteError) -> http::Response<Body> {
             error!("Error processing HTTP request: {other_error:?}");
             HttpErrorBody::response_from_msg_and_status(
                 other_error.to_string(),
-                http::StatusCode::INTERNAL_SERVER_ERROR,
+                StatusCode::INTERNAL_SERVER_ERROR,
             )
         }
     }
 }
 
-fn api_error_handler(api_error: ApiError) -> http::Response<Body> {
+fn api_error_handler(api_error: ApiError) -> Response<Body> {
     // Print a stack trace for Internal Server errors
     if let ApiError::InternalServerError(_) = api_error {
         error!("Error processing HTTP request: {api_error:?}");
