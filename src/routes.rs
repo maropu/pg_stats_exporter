@@ -9,7 +9,7 @@ use tracing::{self, debug, info, info_span, error, Instrument};
 use std::future::Future;
 use std::sync::Arc;
 
-use crate::db;
+use crate::postgres_connection::PgConnectionConfig;
 use crate::metrics;
 
 #[derive(Debug, Error)]
@@ -203,7 +203,7 @@ pub fn make_router(state: Arc<State>) -> anyhow::Result<RouterBuilder<hyper::Bod
 }
 
 pub struct State {
-    pub pgnode: &'static db::PostgresNode,
+    pub pgnode: &'static PgConnectionConfig,
 }
 
 #[inline(always)]

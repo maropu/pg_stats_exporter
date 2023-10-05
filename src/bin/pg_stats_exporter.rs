@@ -1,10 +1,14 @@
 //!
 //! A PostgreSQL metrics exporter for Prometheus.
 //!
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use clap::{Arg, Command};
 use hyper;
-use pg_stats_exporter::{db::PostgresNode, tcp_listener, routes};
+use pg_stats_exporter::{
+    postgres_connection::{parse_host_port, PgConnectionConfig},
+    tcp_listener,
+    routes
+};
 use routes::State;
 use routerify;
 use std::sync::Arc;
@@ -12,8 +16,7 @@ use tokio;
 
 const DEFAULT_PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let arg_matches = cli().get_matches();
 
     let postgres = arg_matches
@@ -34,29 +37,42 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or("postgres")
         .to_string();
 
-    let state = Arc::new(State {
-        pgnode: Box::leak(Box::new(PostgresNode {
-            addr: postgres,
-            user: user,
-            dbname: dbname,
-        })),
-    });
-
-    let http_listener = tcp_listener::bind(DEFAULT_PG_STATS_EXPORTER_API)?;
-    let router = routes::make_router(state)?
-        .build()
-        .map_err(|err| anyhow!(err))?;
-    let service = routerify::RouterService::new(router).unwrap();
-    let server = hyper::Server::from_tcp(http_listener)?
-        .serve(service)
-        .with_graceful_shutdown(shutdown_watcher());
-
-    // Run the server until shutdown requested
-    if let Err(e) = server.await {
-        eprintln!("Server error: {}", e);
+    let (host, port) = parse_host_port(&postgres).expect("Unable to parse `postgres`");
+    let port = port.unwrap_or(5432);
+    let postgres = PgConnectionConfig::new_host_port(host, port)
+        .set_user(Some(user))
+        .set_dbname(Some(dbname));
+    if !postgres.can_connect() {
+        bail!("Failed to connect to {}", postgres.raw_address());
     }
 
-    Ok(())
+    let state = Arc::new(State {
+        pgnode: Box::leak(Box::new(postgres)),
+    });
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .thread_name("http server")
+        // if you change the number of worker threads please change the constant below
+        .enable_all()
+        .build()?;
+
+    runtime.block_on(async {
+        let http_listener = tcp_listener::bind(DEFAULT_PG_STATS_EXPORTER_API)?;
+        let router = routes::make_router(state)?
+            .build()
+            .map_err(|err| anyhow!(err))?;
+        let service = routerify::RouterService::new(router).unwrap();
+        let server = hyper::Server::from_tcp(http_listener)?
+            .serve(service)
+            .with_graceful_shutdown(shutdown_watcher());
+
+        // Run the server until shutdown requested
+        if let Err(e) = server.await {
+            eprintln!("Server error: {}", e);
+        }
+
+        anyhow::Ok(())
+    })
 }
 
 async fn shutdown_watcher() {

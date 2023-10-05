@@ -1,7 +1,7 @@
 use postgres::{Client, Error};
 use prometheus::{core::Collector, IntGauge};
 
-use crate::db;
+use crate::postgres_connection::PgConnectionConfig;
 
 // A definithin of `statsinfo.cpustats` is as follows:
 //
@@ -112,10 +112,11 @@ fn get_tablespaces_stats(conn: &mut Client) -> Result<Vec<prometheus::proto::Met
 // TODO: Adds more methods for the other metrics of `pg_statsinfo`
 
 /// Gathers all Prometheus metrics via a PostgreSQL connection.
-pub fn gather(pg: &db::PostgresNode) -> Vec<prometheus::proto::MetricFamily> {
+pub fn gather(postgres: &PgConnectionConfig) -> Vec<prometheus::proto::MetricFamily> {
     let mut metrics: Vec<prometheus::proto::MetricFamily> = vec![];
 
-    let mut conn = db::connect_to(&pg).expect(&format!("Failed to connect to {}", pg.addr));
+    let mut conn = postgres.connect_no_tls()
+        .expect(&format!("Failed to connect to {}", postgres.raw_address()));
     metrics.append(&mut get_cpustats(&mut conn).unwrap());
     metrics.append(&mut get_tablespaces_stats(&mut conn).unwrap());
     metrics
