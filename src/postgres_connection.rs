@@ -276,4 +276,10 @@ mod tests_pg_connection_config {
             Some("hello world with\\ space and\\ \\\\\\ backslashes")
         );
     }
+
+    #[test]
+    fn test_can_connect() {
+        let cfg = PgConnectionConfig::new_host_port(STUB_HOST.clone(), 123);
+        assert_eq!(cfg.can_connect(), false);
+    }
 }
