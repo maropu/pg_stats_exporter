@@ -1,4 +1,5 @@
 [![License](http://img.shields.io/:license-Apache_v2-blue.svg)](https://github.com/maropu/pg_stats_exporter/blob/master/LICENSE)
+[![Build and test](https://github.com/maropu/pg_stats_exporter/actions/workflows/build_and_tests.yml/badge.svg)](https://github.com/maropu/pg_stats_exporter/actions/workflows/build_and_tests.yml)
 
 This is an experimental prototype of a PostgreSQL metrics exporter for Prometheus.
 
