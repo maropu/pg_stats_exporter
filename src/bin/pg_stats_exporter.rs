@@ -13,7 +13,7 @@ use std::sync::Arc;
 project_git_version!(GIT_VERSION);
 
 const CRATE_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
-const DEFAULT_PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
+const PG_STATS_EXPORTER_API: &str = "[::1]:9753";
 
 fn version() -> String {
     format!("{}({})", CRATE_PKG_VERSION, GIT_VERSION)
@@ -21,7 +21,11 @@ fn version() -> String {
 
 fn main() -> anyhow::Result<()> {
     // TODO: Replace `println` with `tracing::info!`
-    println!("pg_stats_exporter v{}", version());
+    println!(
+        "pg_stats_exporter v{} listening on {}",
+        version(),
+        PG_STATS_EXPORTER_API
+    );
 
     let arg_matches = cli().get_matches();
 
@@ -63,7 +67,7 @@ fn main() -> anyhow::Result<()> {
         .build()?;
 
     runtime.block_on(async {
-        let http_listener = tcp_listener::bind(DEFAULT_PG_STATS_EXPORTER_API)?;
+        let http_listener = tcp_listener::bind(PG_STATS_EXPORTER_API)?;
         let router = routes::make_router(state)?
             .build()
             .map_err(|err| anyhow!(err))?;
