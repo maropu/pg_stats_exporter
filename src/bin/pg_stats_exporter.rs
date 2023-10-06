@@ -90,6 +90,7 @@ async fn shutdown_watcher() {
 
 fn cli() -> Command {
     Command::new("PostgreSQL metrics exporter")
+        // TODO: Use version() instead
         .version(CRATE_PKG_VERSION)
         .arg(
             Arg::new("postgres")
