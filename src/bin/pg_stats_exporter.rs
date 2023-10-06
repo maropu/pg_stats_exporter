@@ -5,14 +5,24 @@ use anyhow::{anyhow, bail};
 use clap::{Arg, Command};
 use pg_stats_exporter::{
     postgres_connection::{parse_host_port, PgConnectionConfig},
-    routes, tcp_listener,
+    project_git_version, routes, tcp_listener,
 };
 use routes::State;
 use std::sync::Arc;
 
+project_git_version!(GIT_VERSION);
+
+const CRATE_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
 
+fn version() -> String {
+    format!("{}({})", CRATE_PKG_VERSION, GIT_VERSION)
+}
+
 fn main() -> anyhow::Result<()> {
+    // TODO: Replace `println` with `tracing::info!`
+    println!("pg_stats_exporter v{}", version());
+
     let arg_matches = cli().get_matches();
 
     let postgres = arg_matches
@@ -80,7 +90,7 @@ async fn shutdown_watcher() {
 
 fn cli() -> Command {
     Command::new("PostgreSQL metrics exporter")
-        .version("0.1.0")
+        .version(CRATE_PKG_VERSION)
         .arg(
             Arg::new("postgres")
                 .long("postgres")
