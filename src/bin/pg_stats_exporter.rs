@@ -3,16 +3,12 @@
 //!
 use anyhow::{anyhow, bail};
 use clap::{Arg, Command};
-use hyper;
 use pg_stats_exporter::{
     postgres_connection::{parse_host_port, PgConnectionConfig},
-    tcp_listener,
-    routes
+    routes, tcp_listener,
 };
 use routes::State;
-use routerify;
 use std::sync::Arc;
-use tokio;
 
 const DEFAULT_PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
 
@@ -37,7 +33,7 @@ fn main() -> anyhow::Result<()> {
         .unwrap_or("postgres")
         .to_string();
 
-    let (host, port) = parse_host_port(&postgres).expect("Unable to parse `postgres`");
+    let (host, port) = parse_host_port(postgres).expect("Unable to parse `postgres`");
     let port = port.unwrap_or(5432);
     let postgres = PgConnectionConfig::new_host_port(host, port)
         .set_user(Some(user))

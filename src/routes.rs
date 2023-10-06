@@ -1,16 +1,16 @@
 use hyper::{header::CONTENT_TYPE, Body, Method, Request, Response, StatusCode};
 use prometheus::{Encoder, TextEncoder};
-use routerify::{Router, RouterBuilder, RouteError};
 use routerify::ext::RequestExt;
-use std::error::Error as StdError;
+use routerify::{RouteError, Router, RouterBuilder};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tracing::{self, debug, info, info_span, error, Instrument};
+use std::error::Error as StdError;
 use std::future::Future;
 use std::sync::Arc;
+use thiserror::Error;
+use tracing::{self, debug, error, info, info_span, Instrument};
 
-use crate::postgres_connection::PgConnectionConfig;
 use crate::metrics;
+use crate::postgres_connection::PgConnectionConfig;
 
 #[derive(Debug, Error)]
 pub enum ApiError {
@@ -321,7 +321,7 @@ async fn prometheus_metrics_handler(_req: Request<Body>) -> Result<Response<Body
     let span = info_span!("blocking");
     tokio::task::spawn_blocking(move || {
         let _span = span.entered();
-        let metrics = metrics::gather(&get_state(&_req).pgnode);
+        let metrics = metrics::gather(get_state(&_req).pgnode);
         let res = encoder
             .encode(&metrics, &mut writer)
             .and_then(|_| writer.flush().map_err(|e| e.into()));
