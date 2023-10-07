@@ -7,7 +7,7 @@ use std::error::Error as StdError;
 use std::future::Future;
 use std::sync::Arc;
 use thiserror::Error;
-use tracing::{self, debug, error, info, info_span, Instrument};
+use tracing::{self, debug, error, info, info_span, instrument, Instrument};
 
 use crate::metrics;
 use crate::postgres_connection::PgConnectionConfig;
@@ -214,6 +214,7 @@ fn get_state(request: &Request<Body>) -> &State {
         .as_ref()
 }
 
+#[instrument(skip_all)]
 async fn prometheus_metrics_handler(_req: Request<Body>) -> Result<Response<Body>, ApiError> {
     use bytes::{Bytes, BytesMut};
     use std::io::Write as _;

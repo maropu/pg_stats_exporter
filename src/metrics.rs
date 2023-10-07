@@ -1,7 +1,17 @@
 use postgres::{Client, Error};
 use prometheus::{core::Collector, IntGauge};
+use tracing;
 
 use crate::postgres_connection::PgConnectionConfig;
+
+// TODO: Move this macro to `tracing_utils.rs`
+#[macro_export]
+macro_rules! info_span {
+    ($span_name:expr) => {
+        let span = tracing::info_span!($span_name);
+        let _enter = span.enter();
+    };
+}
 
 // A definithin of `statsinfo.cpustats` is as follows:
 //
@@ -24,6 +34,8 @@ use crate::postgres_connection::PgConnectionConfig;
 //
 // https://github.com/ossc-db/pg_statsinfo/blob/15.1/agent/lib/pg_statsinfo.sql.in#L127-L142
 fn get_cpustats(conn: &mut Client) -> Result<Vec<prometheus::proto::MetricFamily>, Error> {
+    info_span!("get_cpustats");
+
     // TODO: Checks if the query below always returns a single row
     let row = conn.query_one(
         "
@@ -87,6 +99,8 @@ fn get_cpustats(conn: &mut Client) -> Result<Vec<prometheus::proto::MetricFamily
 //
 // https://github.com/ossc-db/pg_statsinfo/blob/15.1/agent/lib/pg_statsinfo.sql.in#L84-L97
 fn get_tablespaces_stats(conn: &mut Client) -> Result<Vec<prometheus::proto::MetricFamily>, Error> {
+    info_span!("get_tablespaces_stats");
+
     let row = conn.query(
         "
         SELECT

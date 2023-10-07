@@ -4,6 +4,7 @@
 use anyhow::{anyhow, bail};
 use clap::{Arg, Command};
 use pg_stats_exporter::{
+    logging,
     postgres_connection::{parse_host_port, PgConnectionConfig},
     project_git_version, routes, tcp_listener,
 };
@@ -13,7 +14,7 @@ use std::sync::Arc;
 project_git_version!(GIT_VERSION);
 
 const CRATE_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
-const PG_STATS_EXPORTER_API: &str = "[::1]:9753";
+const PG_STATS_EXPORTER_API: &str = "127.0.0.1:9753";
 
 fn version() -> String {
     format!("{}({})", CRATE_PKG_VERSION, GIT_VERSION)
@@ -67,6 +68,10 @@ fn main() -> anyhow::Result<()> {
         .build()?;
 
     runtime.block_on(async {
+        let _logging_guard = logging::init("pg_stats_exporter")
+            .await
+            .expect("Failed to initialize logging");
+
         let http_listener = tcp_listener::bind(PG_STATS_EXPORTER_API)?;
         let router = routes::make_router(state)?
             .build()

@@ -1,7 +1,9 @@
+pub mod logging;
 pub mod metrics;
 pub mod postgres_connection;
 pub mod routes;
 pub mod tcp_listener;
+pub mod tracing_utils;
 
 /// This is a shortcut to embed git sha into binaries and avoid copying the same build script to all packages
 ///
