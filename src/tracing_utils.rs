@@ -69,7 +69,9 @@ pub use tracing_opentelemetry::OpenTelemetryLayer;
 /// This doesn't block, but is marked as 'async' to hint that this must be called in
 /// asynchronous execution context.
 pub async fn init_tracing(service_name: &str) -> Option<opentelemetry::sdk::trace::Tracer> {
-    if std::env::var("OTEL_SDK_DISABLED") == Ok("true".to_string()) {
+    if std::env::var("OTEL_SDK_DISABLED") == Ok("true".to_string())
+        || std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_err()
+    {
         return None;
     };
     Some(init_tracing_internal(service_name.to_string()))
@@ -80,7 +82,9 @@ pub async fn init_tracing(service_name: &str) -> Option<opentelemetry::sdk::trac
 pub fn init_tracing_without_runtime(
     service_name: &str,
 ) -> Option<opentelemetry::sdk::trace::Tracer> {
-    if std::env::var("OTEL_SDK_DISABLED") == Ok("true".to_string()) {
+    if std::env::var("OTEL_SDK_DISABLED") == Ok("true".to_string())
+        || std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_err()
+    {
         return None;
     };
 
