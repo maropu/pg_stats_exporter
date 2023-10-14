@@ -28,6 +28,7 @@ fn main() -> anyhow::Result<()> {
         PG_STATS_EXPORTER_API
     );
 
+    // TODO: Use attributes to parse CLI arguments
     let arg_matches = cli().get_matches();
 
     let postgres = arg_matches
@@ -68,6 +69,7 @@ fn main() -> anyhow::Result<()> {
         .build()?;
 
     runtime.block_on(async {
+        // TODO: Write logs to a file
         let _logging_guard = logging::init("pg_stats_exporter")
             .await
             .expect("Failed to initialize logging");
